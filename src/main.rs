@@ -3,6 +3,7 @@ use std::process::ExitCode;
 
 mod parser;
 mod reader;
+mod resume;
 mod scan;
 mod session;
 mod ui;

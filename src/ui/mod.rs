@@ -27,7 +27,10 @@ pub fn run(sessions: Vec<SessionMeta>) -> Result<()> {
         if event::poll(Duration::from_millis(250))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
-                    handle_key(key.code, &mut app);
+                    match handle_key(key.code, &mut app) {
+                        Action::None => {}
+                        Action::Resume { fork } => do_resume(&mut app, &mut terminal, fork)?,
+                    }
                 }
             }
         }
@@ -43,6 +46,7 @@ struct App {
     mode: Mode,
     filter: FilterState,
     reader_index: Option<usize>,
+    status: Option<String>,
     should_quit: bool,
 }
 
@@ -54,6 +58,11 @@ struct FilterState {
 enum Mode {
     List,
     Reader { turns: Vec<Turn>, scroll: u16 },
+}
+
+enum Action {
+    None,
+    Resume { fork: bool },
 }
 
 impl App {
@@ -69,6 +78,7 @@ impl App {
                 query: String::new(),
             },
             reader_index: None,
+            status: None,
             should_quit: false,
         }
     }
@@ -100,7 +110,8 @@ fn effective_preview(app: &App, width: u16) -> bool {
     }
 }
 
-fn handle_key(code: KeyCode, app: &mut App) {
+fn handle_key(code: KeyCode, app: &mut App) -> Action {
+    app.status = None;
     match &mut app.mode {
         Mode::List => {
             if app.filter.active {
@@ -118,7 +129,7 @@ fn handle_key(code: KeyCode, app: &mut App) {
                     KeyCode::Char(c) => app.filter.query.push(c),
                     _ => {}
                 }
-                return;
+                return Action::None;
             }
             match code {
                 KeyCode::Char('q') | KeyCode::Esc => app.should_quit = true,
@@ -149,6 +160,8 @@ fn handle_key(code: KeyCode, app: &mut App) {
                         }
                     }
                 }
+                KeyCode::Char('r') => return Action::Resume { fork: false },
+                KeyCode::Char('f') => return Action::Resume { fork: true },
                 _ => {}
             }
         }
@@ -158,9 +171,12 @@ fn handle_key(code: KeyCode, app: &mut App) {
             KeyCode::Up | KeyCode::Char('k') => *scroll = scroll.saturating_sub(1),
             KeyCode::PageDown => *scroll = scroll.saturating_add(10),
             KeyCode::PageUp => *scroll = scroll.saturating_sub(10),
+            KeyCode::Char('r') => return Action::Resume { fork: false },
+            KeyCode::Char('f') => return Action::Resume { fork: true },
             _ => {}
         },
     }
+    Action::None
 }
 
 fn render(f: &mut ratatui::Frame, app: &mut App) {
@@ -181,6 +197,7 @@ fn render(f: &mut ratatui::Frame, app: &mut App) {
                     cursor: app.selected,
                     show_preview: show,
                     filter_input: app.filter.active.then_some(app.filter.query.as_str()),
+                    status_override: app.status.as_deref(),
                 },
             );
         }
@@ -200,6 +217,50 @@ fn render(f: &mut ratatui::Frame, app: &mut App) {
             }
         }
     }
+}
+
+fn do_resume(
+    app: &mut App,
+    terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
+    fork: bool,
+) -> Result<()> {
+    let real_idx = match &app.mode {
+        Mode::List => {
+            let indices = app.filtered_indices();
+            indices.get(app.selected).copied()
+        }
+        Mode::Reader { .. } => app.reader_index,
+    };
+    let Some(real_idx) = real_idx else {
+        return Ok(());
+    };
+    let m = app.sessions[real_idx].clone();
+    let Some(cwd) = m.cwd.clone() else {
+        app.status = Some("session has no recorded cwd".into());
+        return Ok(());
+    };
+
+    // Tear down before spawning.
+    let _ = disable_raw_mode();
+    let _ = execute!(terminal.backend_mut(), LeaveAlternateScreen);
+    let _ = terminal.show_cursor();
+
+    let result = crate::resume::spawn(std::path::Path::new(&cwd), &m.session_id, fork);
+
+    if result.is_ok() {
+        std::process::exit(0);
+    }
+
+    // Re-enter the TUI to display the error.
+    enable_raw_mode()?;
+    execute!(terminal.backend_mut(), EnterAlternateScreen)?;
+    terminal.clear()?;
+
+    match result {
+        Ok(()) => {}
+        Err(e) => app.status = Some(format!("resume failed: {e}")),
+    }
+    Ok(())
 }
 
 struct RawModeGuard;

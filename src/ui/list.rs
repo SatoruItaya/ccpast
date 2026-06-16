@@ -13,6 +13,7 @@ pub struct ListView<'a> {
     pub cursor: usize,
     pub show_preview: bool,
     pub filter_input: Option<&'a str>,
+    pub status_override: Option<&'a str>,
 }
 
 pub fn render(f: &mut Frame, area: Rect, view: ListView<'_>) {
@@ -86,6 +87,11 @@ fn format_row(m: &SessionMeta, width: usize) -> String {
 }
 
 fn render_status(f: &mut Frame, area: Rect, view: &ListView<'_>) {
+    if let Some(msg) = view.status_override {
+        let p = Paragraph::new(Line::raw(msg.to_string()));
+        f.render_widget(p, area);
+        return;
+    }
     let line = if let Some(&i) = view.indices.get(view.cursor) {
         let m = &view.sessions[i];
         let cwd = m.cwd.as_deref().unwrap_or("(no cwd)");
