@@ -2,6 +2,21 @@
 
 Project instructions for Claude Code working in this repository.
 
+## This is a public repository — keep internal data out
+
+This repository is **public**. Before adding any file (docs, code comments, examples, fixtures, test data, commit messages), make sure it does **not** contain:
+
+- Real absolute paths from the local machine (`/Users/<name>/...`, `/home/<name>/...`)
+- The user's name, email, GitHub handle in places where they are not already public
+- Real session IDs / UUIDs / `request_id`s observed in `~/.claude/` or other private data
+- Real timestamps captured from on-disk sessions (use a clearly synthetic example like `2026-01-01T00:00:00.000Z`)
+- Names of private/work repositories, organizations, or projects observed during exploration of `~/.claude/projects/`
+- Verbatim content from real conversations or tool outputs encountered during development
+
+When an example needs concrete-looking data, **synthesize it** (e.g. `/abs/path`, `<session-id>`, `2026-01-01T00:00:00.000Z`). Fixtures under `tests/fixtures/` must be hand-crafted, not copied from real `.jsonl` files.
+
+If you discover that something internal has already been committed, raise it immediately and propose a sanitizing commit (do not silently rewrite history on a public branch unless explicitly asked).
+
 ## Documentation language policy
 
 - **Claude-facing docs** (this file, design specs under `docs/`, internal notes): write in **English**.
