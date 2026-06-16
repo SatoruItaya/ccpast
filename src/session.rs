@@ -4,9 +4,7 @@ use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
 pub struct SessionMeta {
-    #[allow(dead_code)]
     pub session_id: String,
-    #[allow(dead_code)]
     pub path: PathBuf,
     pub cwd: Option<String>,
     pub cwd_exists: bool,

@@ -1,4 +1,5 @@
 mod list;
+mod reader;
 
 use std::io::{self, Stdout};
 use std::time::Duration;
@@ -12,6 +13,7 @@ use crossterm::terminal::{
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 
+use crate::reader::Turn;
 use crate::session::SessionMeta;
 
 pub fn run(sessions: Vec<SessionMeta>) -> Result<()> {
@@ -38,7 +40,13 @@ struct App {
     selected: usize,
     show_preview: Option<bool>,
     last_width: u16,
+    mode: Mode,
     should_quit: bool,
+}
+
+enum Mode {
+    List,
+    Reader { turns: Vec<Turn>, scroll: u16 },
 }
 
 impl App {
@@ -48,6 +56,7 @@ impl App {
             selected: 0,
             show_preview: None,
             last_width: 0,
+            mode: Mode::List,
             should_quit: false,
         }
     }
@@ -61,38 +70,70 @@ fn effective_preview(app: &App, width: u16) -> bool {
 }
 
 fn handle_key(code: KeyCode, app: &mut App) {
-    match code {
-        KeyCode::Char('q') | KeyCode::Esc => app.should_quit = true,
-        KeyCode::Down | KeyCode::Char('j') => {
-            if !app.sessions.is_empty() && app.selected + 1 < app.sessions.len() {
-                app.selected += 1;
+    match &mut app.mode {
+        Mode::List => match code {
+            KeyCode::Char('q') | KeyCode::Esc => app.should_quit = true,
+            KeyCode::Down | KeyCode::Char('j') => {
+                if !app.sessions.is_empty() && app.selected + 1 < app.sessions.len() {
+                    app.selected += 1;
+                }
             }
-        }
-        KeyCode::Up | KeyCode::Char('k') => {
-            if app.selected > 0 {
+            KeyCode::Up | KeyCode::Char('k') => {
                 app.selected = app.selected.saturating_sub(1);
             }
-        }
-        KeyCode::Char('p') => {
-            let cur = effective_preview(app, app.last_width);
-            app.show_preview = Some(!cur);
-        }
-        _ => {}
+            KeyCode::Char('p') => {
+                let cur = effective_preview(app, app.last_width);
+                app.show_preview = Some(!cur);
+            }
+            KeyCode::Enter => {
+                if let Some(m) = app.sessions.get(app.selected) {
+                    if let Ok(turns) = crate::reader::load_turns(&m.path, None) {
+                        app.mode = Mode::Reader { turns, scroll: 0 };
+                    }
+                }
+            }
+            _ => {}
+        },
+        Mode::Reader { scroll, .. } => match code {
+            KeyCode::Char('q') | KeyCode::Esc => app.mode = Mode::List,
+            KeyCode::Down | KeyCode::Char('j') => *scroll = scroll.saturating_add(1),
+            KeyCode::Up | KeyCode::Char('k') => *scroll = scroll.saturating_sub(1),
+            KeyCode::PageDown => *scroll = scroll.saturating_add(10),
+            KeyCode::PageUp => *scroll = scroll.saturating_sub(10),
+            _ => {}
+        },
     }
 }
 
 fn render(f: &mut ratatui::Frame, app: &mut App) {
     app.last_width = f.area().width;
-    let show = effective_preview(app, app.last_width);
-    list::render(
-        f,
-        f.area(),
-        list::ListView {
-            sessions: &app.sessions,
-            selected: app.selected,
-            show_preview: show,
-        },
-    );
+    match &app.mode {
+        Mode::List => {
+            let show = effective_preview(app, app.last_width);
+            list::render(
+                f,
+                f.area(),
+                list::ListView {
+                    sessions: &app.sessions,
+                    selected: app.selected,
+                    show_preview: show,
+                },
+            );
+        }
+        Mode::Reader { turns, scroll } => {
+            if let Some(m) = app.sessions.get(app.selected) {
+                reader::render(
+                    f,
+                    f.area(),
+                    reader::ReaderView {
+                        meta: m,
+                        turns,
+                        scroll: *scroll,
+                    },
+                );
+            }
+        }
+    }
 }
 
 struct RawModeGuard;
