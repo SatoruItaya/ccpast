@@ -4,6 +4,7 @@ use std::process::ExitCode;
 mod parser;
 mod scan;
 mod session;
+mod ui;
 mod util;
 
 fn main() -> ExitCode {
@@ -25,8 +26,21 @@ fn main() -> ExitCode {
         return run_list();
     }
 
-    // TUI path is added in a later task; for now, fall through to --list.
-    run_list()
+    let Some(root) = scan::projects_root() else {
+        eprintln!("ccpast: cannot determine $HOME");
+        return ExitCode::from(2);
+    };
+    let mut metas: Vec<_> = scan::list_session_files(&root)
+        .iter()
+        .filter_map(|p| session::extract_meta(p))
+        .collect();
+    metas.sort_by(|a, b| b.last_activity.cmp(&a.last_activity));
+
+    if let Err(err) = ui::run(metas) {
+        eprintln!("ccpast: {err:#}");
+        return ExitCode::from(1);
+    }
+    ExitCode::SUCCESS
 }
 
 fn print_help() {
