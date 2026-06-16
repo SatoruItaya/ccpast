@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use chrono::{DateTime, Local, Utc};
 use unicode_width::UnicodeWidthChar;
 
