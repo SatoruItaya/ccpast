@@ -16,12 +16,12 @@ pub fn truncate_to_width(s: &str, max_cols: usize) -> String {
         let w = UnicodeWidthChar::width(ch).unwrap_or(0);
         if width + w > max_cols {
             // Need to leave room for the ellipsis (1 col).
-            while out.chars().next_back().is_some()
-                && out.chars().fold(0usize, |acc, c| {
-                    acc + UnicodeWidthChar::width(c).unwrap_or(0)
-                }) > max_cols.saturating_sub(1)
-            {
-                out.pop();
+            while width > max_cols.saturating_sub(1) {
+                let last = match out.pop() {
+                    Some(c) => c,
+                    None => break,
+                };
+                width -= UnicodeWidthChar::width(last).unwrap_or(0);
             }
             out.push('…');
             return out;
@@ -56,10 +56,9 @@ mod tests {
 
     #[test]
     fn truncate_counts_multibyte_visual_width() {
-        // 5 wide characters take 10 cols; we ask for 6, expect "あい…" (5 cols).
+        // 5 wide characters take 10 cols; we ask for 6 cols, expect "あい…" (5 cols total).
         let out = truncate_to_width("あいうえお", 6);
-        assert!(out.chars().count() <= 5);
-        assert!(out.ends_with('…'));
+        assert_eq!(out, "あい…");
     }
 
     #[test]
