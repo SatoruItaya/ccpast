@@ -43,7 +43,7 @@ Records are distinguished by `type`. Observed: `user`, `assistant`, `summary`, `
   "type": "user" | "assistant",
   "message": { "role": "...", "content": <string | array | missing> },
   "uuid": "...",
-  "timestamp": "2026-06-15T10:40:40.592Z",
+  "timestamp": "2026-01-01T00:00:00.000Z",
   "cwd": "/abs/path",
   "sessionId": "<uuid>",
   ...
