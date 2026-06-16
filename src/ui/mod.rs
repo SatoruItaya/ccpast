@@ -19,13 +19,9 @@ pub fn run(sessions: Vec<SessionMeta>) -> Result<()> {
     let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App {
-        sessions,
-        selected: 0,
-        should_quit: false,
-    };
+    let mut app = App::new(sessions);
     while !app.should_quit {
-        terminal.draw(|f| render(f, &app))?;
+        terminal.draw(|f| render(f, &mut app))?;
         if event::poll(Duration::from_millis(250))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
@@ -40,7 +36,28 @@ pub fn run(sessions: Vec<SessionMeta>) -> Result<()> {
 struct App {
     sessions: Vec<SessionMeta>,
     selected: usize,
+    show_preview: Option<bool>,
+    last_width: u16,
     should_quit: bool,
+}
+
+impl App {
+    fn new(sessions: Vec<SessionMeta>) -> Self {
+        Self {
+            sessions,
+            selected: 0,
+            show_preview: None,
+            last_width: 0,
+            should_quit: false,
+        }
+    }
+}
+
+fn effective_preview(app: &App, width: u16) -> bool {
+    match app.show_preview {
+        Some(v) => v,
+        None => width >= 100,
+    }
 }
 
 fn handle_key(code: KeyCode, app: &mut App) {
@@ -56,17 +73,24 @@ fn handle_key(code: KeyCode, app: &mut App) {
                 app.selected = app.selected.saturating_sub(1);
             }
         }
+        KeyCode::Char('p') => {
+            let cur = effective_preview(app, app.last_width);
+            app.show_preview = Some(!cur);
+        }
         _ => {}
     }
 }
 
-fn render(f: &mut ratatui::Frame, app: &App) {
+fn render(f: &mut ratatui::Frame, app: &mut App) {
+    app.last_width = f.area().width;
+    let show = effective_preview(app, app.last_width);
     list::render(
         f,
         f.area(),
         list::ListView {
             sessions: &app.sessions,
             selected: app.selected,
+            show_preview: show,
         },
     );
 }

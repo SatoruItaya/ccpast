@@ -2,6 +2,7 @@ use std::io::{self, IsTerminal, Write};
 use std::process::ExitCode;
 
 mod parser;
+mod reader;
 mod scan;
 mod session;
 mod ui;

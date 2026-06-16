@@ -10,10 +10,11 @@ use crate::util::{format_local_short, truncate_to_width};
 pub struct ListView<'a> {
     pub sessions: &'a [SessionMeta],
     pub selected: usize,
+    pub show_preview: bool,
 }
 
 pub fn render(f: &mut Frame, area: Rect, view: ListView<'_>) {
-    let layout = Layout::default()
+    let outer = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Min(1),
@@ -21,12 +22,21 @@ pub fn render(f: &mut Frame, area: Rect, view: ListView<'_>) {
             Constraint::Length(1),
         ])
         .split(area);
+    let body = outer[0];
+    let status_area = outer[1];
+    let help_area = outer[2];
 
-    let list_area = layout[0];
-    let status_area = layout[1];
-    let help_area = layout[2];
+    if view.show_preview {
+        let cols = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
+            .split(body);
+        render_list(f, cols[0], &view);
+        render_preview(f, cols[1], &view);
+    } else {
+        render_list(f, body, &view);
+    }
 
-    render_list(f, list_area, &view);
     render_status(f, status_area, &view);
     render_help(f, help_area);
 }
@@ -86,4 +96,35 @@ fn render_help(f: &mut Frame, area: Rect) {
         "↑/↓ move   Enter view   r resume   f fork   d delete   / filter   p preview   q quit";
     let p = Paragraph::new(Line::raw(help));
     f.render_widget(p, area);
+}
+
+fn render_preview(f: &mut Frame, area: Rect, view: &ListView<'_>) {
+    use ratatui::text::Text;
+
+    let body = match view.sessions.get(view.selected) {
+        Some(m) => match crate::reader::load_turns(&m.path, Some(6)) {
+            Ok(turns) => format_preview(&turns),
+            Err(_) => "(failed to read session)".into(),
+        },
+        None => "(no selection)".into(),
+    };
+    let p = Paragraph::new(Text::raw(body))
+        .block(Block::default().borders(Borders::ALL).title(" Preview "))
+        .wrap(ratatui::widgets::Wrap { trim: false });
+    f.render_widget(p, area);
+}
+
+fn format_preview(turns: &[crate::reader::Turn]) -> String {
+    let mut s = String::new();
+    for t in turns {
+        let header = match t.role {
+            crate::reader::Role::User => "▍ user",
+            crate::reader::Role::Assistant => "▍ assistant",
+        };
+        s.push_str(header);
+        s.push('\n');
+        s.push_str(&t.body);
+        s.push_str("\n\n");
+    }
+    s
 }
