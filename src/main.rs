@@ -6,6 +6,7 @@ mod reader;
 mod resume;
 mod scan;
 mod session;
+mod trash;
 mod ui;
 mod util;
 
