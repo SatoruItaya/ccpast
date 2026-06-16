@@ -62,7 +62,6 @@ pub fn extract_meta(path: &Path) -> Option<SessionMeta> {
                     title = Some(collapse_whitespace(&t));
                 }
             }
-            let _ = kind;
         }
     }
 
