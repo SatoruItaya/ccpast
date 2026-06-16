@@ -100,12 +100,11 @@ fn parse_block(v: &serde_json::Value) -> ContentBlock {
             .map(|s| ContentBlock::Text(s.to_string()))
             .unwrap_or(ContentBlock::Other),
         "thinking" => ContentBlock::Thinking,
-        "tool_use" => ContentBlock::ToolUse {
-            name: v
-                .get("name")
-                .and_then(|n| n.as_str())
-                .unwrap_or("")
-                .to_string(),
+        "tool_use" => match v.get("name").and_then(|n| n.as_str()) {
+            Some(name) => ContentBlock::ToolUse {
+                name: name.to_string(),
+            },
+            None => ContentBlock::Other,
         },
         "tool_result" => ContentBlock::ToolResult,
         _ => ContentBlock::Other,
@@ -166,6 +165,20 @@ mod tests {
             ParsedRecord::UserOrAssistant { message, .. } => match message.content {
                 MessageContent::Blocks(blocks) => {
                     assert_eq!(blocks, vec![ContentBlock::ToolResult]);
+                }
+                other => panic!("expected blocks, got {other:?}"),
+            },
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn tool_use_without_name_falls_back_to_other() {
+        let line = r#"{"type":"user","message":{"role":"user","content":[{"type":"tool_use"}]}}"#;
+        match parse(line) {
+            ParsedRecord::UserOrAssistant { message, .. } => match message.content {
+                MessageContent::Blocks(blocks) => {
+                    assert_eq!(blocks, vec![ContentBlock::Other]);
                 }
                 other => panic!("expected blocks, got {other:?}"),
             },
