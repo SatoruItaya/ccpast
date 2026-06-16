@@ -9,8 +9,10 @@ use crate::util::{format_local_short, truncate_to_width};
 
 pub struct ListView<'a> {
     pub sessions: &'a [SessionMeta],
-    pub selected: usize,
+    pub indices: &'a [usize],
+    pub cursor: usize,
     pub show_preview: bool,
+    pub filter_input: Option<&'a str>,
 }
 
 pub fn render(f: &mut Frame, area: Rect, view: ListView<'_>) {
@@ -44,18 +46,22 @@ pub fn render(f: &mut Frame, area: Rect, view: ListView<'_>) {
 fn render_list(f: &mut Frame, area: Rect, view: &ListView<'_>) {
     let width = area.width as usize;
     let items: Vec<ListItem> = view
-        .sessions
+        .indices
         .iter()
-        .map(|m| ListItem::new(format_row(m, width)))
+        .map(|&i| ListItem::new(format_row(&view.sessions[i], width)))
         .collect();
 
     let mut state = ListState::default();
-    if !view.sessions.is_empty() {
-        state.select(Some(view.selected.min(view.sessions.len() - 1)));
+    if !view.indices.is_empty() {
+        state.select(Some(view.cursor.min(view.indices.len() - 1)));
     }
 
+    let title = match view.filter_input {
+        Some(q) => format!(" Sessions   /{q} "),
+        None => " Sessions ".into(),
+    };
     let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title(" Sessions "))
+        .block(Block::default().borders(Borders::ALL).title(title))
         .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
     f.render_stateful_widget(list, area, &mut state);
 }
@@ -80,12 +86,13 @@ fn format_row(m: &SessionMeta, width: usize) -> String {
 }
 
 fn render_status(f: &mut Frame, area: Rect, view: &ListView<'_>) {
-    let line = if let Some(m) = view.sessions.get(view.selected) {
+    let line = if let Some(&i) = view.indices.get(view.cursor) {
+        let m = &view.sessions[i];
         let cwd = m.cwd.as_deref().unwrap_or("(no cwd)");
-        let count = format!("{}/{}", view.selected + 1, view.sessions.len());
+        let count = format!("{}/{}", view.cursor + 1, view.indices.len());
         format!("{cwd}    {count}    {} msgs", m.message_count)
     } else {
-        String::from("(no sessions found)")
+        String::from("(no sessions match)")
     };
     let p = Paragraph::new(Line::raw(line));
     f.render_widget(p, area);
@@ -101,7 +108,11 @@ fn render_help(f: &mut Frame, area: Rect) {
 fn render_preview(f: &mut Frame, area: Rect, view: &ListView<'_>) {
     use ratatui::text::Text;
 
-    let body = match view.sessions.get(view.selected) {
+    let body = match view
+        .indices
+        .get(view.cursor)
+        .and_then(|&i| view.sessions.get(i))
+    {
         Some(m) => match crate::reader::load_turns(&m.path, Some(6)) {
             Ok(turns) => format_preview(&turns),
             Err(_) => "(failed to read session)".into(),
