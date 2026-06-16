@@ -1,3 +1,5 @@
+mod list;
+
 use std::io::{self, Stdout};
 use std::time::Duration;
 
@@ -44,33 +46,29 @@ struct App {
 fn handle_key(code: KeyCode, app: &mut App) {
     match code {
         KeyCode::Char('q') | KeyCode::Esc => app.should_quit = true,
+        KeyCode::Down | KeyCode::Char('j') => {
+            if !app.sessions.is_empty() && app.selected + 1 < app.sessions.len() {
+                app.selected += 1;
+            }
+        }
+        KeyCode::Up | KeyCode::Char('k') => {
+            if app.selected > 0 {
+                app.selected = app.selected.saturating_sub(1);
+            }
+        }
         _ => {}
     }
 }
 
 fn render(f: &mut ratatui::Frame, app: &App) {
-    use ratatui::style::{Modifier, Style};
-    use ratatui::widgets::{Block, Borders, List, ListItem, ListState};
-
-    let items: Vec<ListItem> = app
-        .sessions
-        .iter()
-        .map(|m| {
-            let mark = if m.cwd_exists { "✓" } else { "✗" };
-            ListItem::new(format!("{mark}  {}", m.title))
-        })
-        .collect();
-
-    let mut state = ListState::default();
-    if !app.sessions.is_empty() {
-        state.select(Some(app.selected.min(app.sessions.len() - 1)));
-    }
-
-    let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("ccpast"))
-        .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
-
-    f.render_stateful_widget(list, f.area(), &mut state);
+    list::render(
+        f,
+        f.area(),
+        list::ListView {
+            sessions: &app.sessions,
+            selected: app.selected,
+        },
+    );
 }
 
 struct RawModeGuard;
