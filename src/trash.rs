@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -8,12 +6,15 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct TrashEntry {
+    #[allow(dead_code)]
     pub trashed_path: PathBuf,
+    #[allow(dead_code)]
     pub original_path: PathBuf,
+    #[allow(dead_code)]
     pub session_id: String,
+    #[allow(dead_code)]
     pub deleted_at: DateTime<Utc>,
 }
 
