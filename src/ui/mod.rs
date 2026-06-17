@@ -33,6 +33,10 @@ pub fn run(sessions: Vec<SessionMeta>) -> Result<()> {
                     match handle_key(key.code, &mut app) {
                         Action::None => {}
                         Action::Resume { fork } => do_resume(&mut app, &mut terminal, fork)?,
+                        Action::LoadBodies => {
+                            // Filled in by Task 5.
+                            app.status = Some("body search not yet wired".into());
+                        }
                     }
                 }
             }
@@ -69,6 +73,7 @@ enum Mode {
 enum Action {
     None,
     Resume { fork: bool },
+    LoadBodies,
 }
 
 impl App {
@@ -195,6 +200,7 @@ fn handle_key(code: KeyCode, app: &mut App) -> Action {
                     KeyCode::Esc => {
                         app.filter.active = false;
                         app.filter.query.clear();
+                        app.filter.body_scope = false;
                     }
                     KeyCode::Enter => {
                         app.filter.active = false;
@@ -203,6 +209,13 @@ fn handle_key(code: KeyCode, app: &mut App) -> Action {
                         app.filter.query.pop();
                     }
                     KeyCode::Char(c) => app.filter.query.push(c),
+                    KeyCode::Tab => {
+                        if app.filter.body_cache.is_none() {
+                            return Action::LoadBodies;
+                        }
+                        app.filter.body_scope = !app.filter.body_scope;
+                        return Action::None;
+                    }
                     _ => {}
                 }
                 return Action::None;
@@ -212,6 +225,7 @@ fn handle_key(code: KeyCode, app: &mut App) -> Action {
                 KeyCode::Char('/') => {
                     app.filter.active = true;
                     app.filter.query.clear();
+                    app.filter.body_scope = false;
                 }
                 KeyCode::Down | KeyCode::Char('j') => {
                     let indices = app.filtered_indices();
