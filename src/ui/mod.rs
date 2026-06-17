@@ -94,16 +94,34 @@ impl App {
         self.sessions
             .iter()
             .enumerate()
-            .filter(|(_, m)| {
-                m.title.to_lowercase().contains(&q)
-                    || m.cwd
-                        .as_deref()
-                        .map(|c| c.to_lowercase().contains(&q))
-                        .unwrap_or(false)
-            })
+            .filter(|(_, m)| match_session(m, &q, false, None))
             .map(|(i, _)| i)
             .collect()
     }
+}
+
+/// Decide whether a single session matches the active filter.
+/// `query_lower` is assumed to be already lowercased.
+/// `body_cache` is the optional cache from `FilterState`; bodies inside are
+/// expected to be already lowercased at load time.
+fn match_session(
+    meta: &SessionMeta,
+    query_lower: &str,
+    body_scope: bool,
+    body_cache: Option<&std::collections::HashMap<std::path::PathBuf, String>>,
+) -> bool {
+    let title_hit = meta.title.to_lowercase().contains(query_lower);
+    let cwd_hit = meta
+        .cwd
+        .as_deref()
+        .map(|c| c.to_lowercase().contains(query_lower))
+        .unwrap_or(false);
+    let body_hit = body_scope
+        && body_cache
+            .and_then(|c| c.get(&meta.path))
+            .map(|b| b.contains(query_lower))
+            .unwrap_or(false);
+    title_hit || cwd_hit || body_hit
 }
 
 fn effective_preview(app: &App, width: u16) -> bool {
@@ -339,5 +357,44 @@ impl Drop for RawModeGuard {
         let mut stdout: Stdout = io::stdout();
         let _ = execute!(stdout, LeaveAlternateScreen);
         let _ = disable_raw_mode();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    fn meta(title: &str, cwd: Option<&str>, path: &str) -> SessionMeta {
+        SessionMeta {
+            session_id: "id".into(),
+            path: PathBuf::from(path),
+            cwd: cwd.map(String::from),
+            cwd_exists: true,
+            last_activity: chrono::Utc::now(),
+            title: title.into(),
+            message_count: 0,
+        }
+    }
+
+    #[test]
+    fn title_substring_matches_case_insensitive() {
+        let m = meta("Implement TASK 4", Some("/p"), "/p/x.jsonl");
+        assert!(match_session(&m, "task", false, None));
+    }
+
+    #[test]
+    fn cwd_substring_matches() {
+        let m = meta("(no title)", Some("/home/user/proj"), "/x.jsonl");
+        assert!(match_session(&m, "proj", false, None));
+    }
+
+    #[test]
+    fn body_scope_off_ignores_body_cache() {
+        let m = meta("(no title)", Some("/p"), "/x.jsonl");
+        let mut cache = HashMap::new();
+        cache.insert(PathBuf::from("/x.jsonl"), "hello world".into());
+        assert!(!match_session(&m, "hello", false, Some(&cache)));
     }
 }
