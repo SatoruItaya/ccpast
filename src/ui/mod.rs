@@ -1,3 +1,4 @@
+mod confirm;
 mod list;
 mod reader;
 
@@ -47,6 +48,7 @@ struct App {
     filter: FilterState,
     reader_index: Option<usize>,
     status: Option<String>,
+    pending_delete: Option<usize>,
     should_quit: bool,
 }
 
@@ -79,6 +81,7 @@ impl App {
             },
             reader_index: None,
             status: None,
+            pending_delete: None,
             should_quit: false,
         }
     }
@@ -114,6 +117,48 @@ fn handle_key(code: KeyCode, app: &mut App) -> Action {
     app.status = None;
     match &mut app.mode {
         Mode::List => {
+            if app.pending_delete.is_some() {
+                match code {
+                    KeyCode::Char('y') | KeyCode::Char('Y') => {
+                        let real_idx = match app.pending_delete.take() {
+                            Some(i) => i,
+                            None => return Action::None,
+                        };
+                        if real_idx >= app.sessions.len() {
+                            app.status = Some("invalid selection".into());
+                            return Action::None;
+                        }
+                        let meta = app.sessions[real_idx].clone();
+                        let trash_root = match crate::scan::projects_root()
+                            .and_then(|r| r.parent().map(|p| p.join(".trash")))
+                        {
+                            Some(p) => p,
+                            None => {
+                                app.status = Some("cannot determine ~/.claude/.trash".into());
+                                return Action::None;
+                            }
+                        };
+                        match crate::trash::move_to_trash(&trash_root, &meta.path, &meta.session_id)
+                        {
+                            Ok(_) => {
+                                app.sessions.remove(real_idx);
+                                let new_count = app.filtered_indices().len();
+                                if app.selected >= new_count {
+                                    app.selected = new_count.saturating_sub(1);
+                                }
+                                app.status = Some(format!("moved {} to trash", meta.session_id));
+                            }
+                            Err(err) => app.status = Some(format!("delete failed: {err:#}")),
+                        }
+                        return Action::None;
+                    }
+                    KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
+                        app.pending_delete = None;
+                        return Action::None;
+                    }
+                    _ => return Action::None,
+                }
+            }
             if app.filter.active {
                 match code {
                     KeyCode::Esc => {
@@ -162,6 +207,12 @@ fn handle_key(code: KeyCode, app: &mut App) -> Action {
                 }
                 KeyCode::Char('r') => return Action::Resume { fork: false },
                 KeyCode::Char('f') => return Action::Resume { fork: true },
+                KeyCode::Char('d') => {
+                    let indices = app.filtered_indices();
+                    if let Some(&real_idx) = indices.get(app.selected) {
+                        app.pending_delete = Some(real_idx);
+                    }
+                }
                 _ => {}
             }
         }
@@ -200,6 +251,16 @@ fn render(f: &mut ratatui::Frame, app: &mut App) {
                     status_override: app.status.as_deref(),
                 },
             );
+            if let Some(real_idx) = app.pending_delete {
+                if let Some(m) = app.sessions.get(real_idx) {
+                    let msg = format!(
+                        "Move session \"{}\" ({}) to ~/.claude/.trash/ ?",
+                        crate::util::truncate_to_width(&m.title, 50),
+                        m.session_id
+                    );
+                    confirm::render(f, f.area(), "Confirm delete", &msg);
+                }
+            }
         }
         Mode::Reader { turns, scroll } => {
             if let Some(idx) = app.reader_index {
