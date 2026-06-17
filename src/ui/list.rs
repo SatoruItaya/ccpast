@@ -14,6 +14,7 @@ pub struct ListView<'a> {
     pub show_preview: bool,
     pub filter_input: Option<&'a str>,
     pub status_override: Option<&'a str>,
+    pub body_scope: bool,
 }
 
 pub fn render(f: &mut Frame, area: Rect, view: ListView<'_>) {
@@ -57,9 +58,10 @@ fn render_list(f: &mut Frame, area: Rect, view: &ListView<'_>) {
         state.select(Some(view.cursor.min(view.indices.len() - 1)));
     }
 
-    let title = match view.filter_input {
-        Some(q) => format!(" Sessions   /{q} "),
-        None => " Sessions ".into(),
+    let title = match (view.filter_input, view.body_scope) {
+        (Some(q), false) => format!(" Sessions   /{q} "),
+        (Some(q), true) => format!(" Sessions   /{q} [+body] "),
+        (None, _) => " Sessions ".into(),
     };
     let list = List::new(items)
         .block(Block::default().borders(Borders::ALL).title(title))
@@ -106,7 +108,7 @@ fn render_status(f: &mut Frame, area: Rect, view: &ListView<'_>) {
 
 fn render_help(f: &mut Frame, area: Rect) {
     let help =
-        "↑/↓ move   Enter view   r resume   f fork   d delete   / filter   p preview   q quit";
+        "↑/↓ move   Enter view   r resume   f fork   d delete   / filter   Tab body   p preview   q quit";
     let p = Paragraph::new(Line::raw(help));
     f.render_widget(p, area);
 }

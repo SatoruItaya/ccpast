@@ -280,6 +280,7 @@ fn render(f: &mut ratatui::Frame, app: &mut App) {
                     show_preview: show,
                     filter_input: app.filter.active.then_some(app.filter.query.as_str()),
                     status_override: app.status.as_deref(),
+                    body_scope: app.filter.body_scope,
                 },
             );
             if let Some(real_idx) = app.pending_delete {
