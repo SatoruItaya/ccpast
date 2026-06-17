@@ -2,7 +2,9 @@ mod confirm;
 mod list;
 mod reader;
 
+use std::collections::HashMap;
 use std::io::{self, Stdout};
+use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -55,6 +57,8 @@ struct App {
 struct FilterState {
     active: bool,
     query: String,
+    body_scope: bool,
+    body_cache: Option<HashMap<PathBuf, String>>,
 }
 
 enum Mode {
@@ -78,6 +82,8 @@ impl App {
             filter: FilterState {
                 active: false,
                 query: String::new(),
+                body_scope: false,
+                body_cache: None,
             },
             reader_index: None,
             status: None,
@@ -94,7 +100,14 @@ impl App {
         self.sessions
             .iter()
             .enumerate()
-            .filter(|(_, m)| match_session(m, &q, false, None))
+            .filter(|(_, m)| {
+                match_session(
+                    m,
+                    &q,
+                    self.filter.body_scope,
+                    self.filter.body_cache.as_ref(),
+                )
+            })
             .map(|(i, _)| i)
             .collect()
     }
@@ -396,5 +409,27 @@ mod tests {
         let mut cache = HashMap::new();
         cache.insert(PathBuf::from("/x.jsonl"), "hello world".into());
         assert!(!match_session(&m, "hello", false, Some(&cache)));
+    }
+
+    #[test]
+    fn body_scope_on_with_body_hit_matches() {
+        let m = meta("(no title)", Some("/p"), "/x.jsonl");
+        let mut cache = HashMap::new();
+        cache.insert(PathBuf::from("/x.jsonl"), "hello world".into());
+        assert!(match_session(&m, "hello", true, Some(&cache)));
+    }
+
+    #[test]
+    fn body_scope_on_with_missing_cache_entry_does_not_match() {
+        let m = meta("(no title)", Some("/p"), "/x.jsonl");
+        let cache: HashMap<PathBuf, String> = HashMap::new();
+        assert!(!match_session(&m, "hello", true, Some(&cache)));
+    }
+
+    #[test]
+    fn body_scope_on_still_matches_title() {
+        let m = meta("Hello World", Some("/p"), "/x.jsonl");
+        let cache: HashMap<PathBuf, String> = HashMap::new();
+        assert!(match_session(&m, "hello", true, Some(&cache)));
     }
 }
