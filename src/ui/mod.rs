@@ -34,8 +34,27 @@ pub fn run(sessions: Vec<SessionMeta>) -> Result<()> {
                         Action::None => {}
                         Action::Resume { fork } => do_resume(&mut app, &mut terminal, fork)?,
                         Action::LoadBodies => {
-                            // Filled in by Task 5.
-                            app.status = Some("body search not yet wired".into());
+                            let total = app.sessions.len();
+                            app.status = Some(format!("reading bodies ({total} sessions)…"));
+                            terminal.draw(|f| render(f, &mut app))?;
+
+                            let mut cache: std::collections::HashMap<std::path::PathBuf, String> =
+                                std::collections::HashMap::with_capacity(total);
+                            for m in &app.sessions {
+                                let body = match crate::reader::load_turns(&m.path, None) {
+                                    Ok(turns) => turns
+                                        .iter()
+                                        .map(|t| t.body.as_str())
+                                        .collect::<Vec<_>>()
+                                        .join("\n")
+                                        .to_lowercase(),
+                                    Err(_) => String::new(),
+                                };
+                                cache.insert(m.path.clone(), body);
+                            }
+                            app.filter.body_cache = Some(cache);
+                            app.filter.body_scope = true;
+                            app.status = Some(format!("body search enabled ({total} sessions)"));
                         }
                     }
                 }
