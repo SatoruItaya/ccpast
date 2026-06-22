@@ -12,6 +12,14 @@
 
 ## インストール
 
+crates.io から:
+
+```bash
+cargo install ccpast
+```
+
+ソースから:
+
 ```bash
 cargo install --path .
 # あるいは

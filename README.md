@@ -12,6 +12,14 @@
 
 ## Install
 
+From crates.io:
+
+```bash
+cargo install ccpast
+```
+
+From source:
+
 ```bash
 cargo install --path .
 # or
