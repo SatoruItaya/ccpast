@@ -5,6 +5,11 @@ edition = "2021"
 description = "Flat cross-cutting browser for Claude Code session history"
 license = "MIT"
 readme = "README.md"
+repository = "https://github.com/SatoruItaya/ccpast"
+homepage = "https://github.com/SatoruItaya/ccpast"
+keywords = ["claude", "tui", "cli", "history", "session"]
+categories = ["command-line-utilities", "development-tools"]
+exclude = ["docs/", ".github/"]
 
 [dependencies]
 anyhow = "1"
