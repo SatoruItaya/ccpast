@@ -1,0 +1,8 @@
+{"type":"user","message":{"role":"user","content":"hello world"},"timestamp":"2026-01-01T00:00:00.000Z","cwd":"/tmp/sample","sessionId":"abcd"}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"first text block"},{"type":"tool_use","name":"Bash","input":{}}]},"timestamp":"2026-01-01T00:00:01.000Z","cwd":"/tmp/sample","sessionId":"abcd"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","content":"output"}]},"timestamp":"2026-01-01T00:00:02.000Z","cwd":"/tmp/sample","sessionId":"abcd"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"hi"}]},"timestamp":"2026-01-01T00:00:03.000Z","cwd":"/tmp/sample","sessionId":"abcd"}
+{"type":"summary","summary":"ignore me","leafUuid":"x"}
+{"type":"attachment","cwd":"/tmp/sample","sessionId":"abcd","timestamp":"2026-01-01T00:00:04.000Z"}
+{"not":"json"
+{"type":"user","message":{"role":"user"}}

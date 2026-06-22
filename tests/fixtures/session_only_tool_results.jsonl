@@ -1,0 +1,2 @@
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","content":"out"}]},"cwd":"/tmp/proj","sessionId":"s2","timestamp":"2026-01-01T10:00:00.000Z"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"ack"}]},"cwd":"/tmp/proj","sessionId":"s2","timestamp":"2026-01-01T10:00:05.000Z"}
