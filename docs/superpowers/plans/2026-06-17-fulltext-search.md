@@ -14,7 +14,6 @@
 - Public repo. Synthesize all example data.
 - No `unwrap` / `expect` / `panic!` in production paths.
 - Run `cargo fmt` and `cargo clippy --all-targets -- -D warnings` after each task.
-- `cargo` lives at `/Users/satoru/.cargo/bin/cargo` if it isn't on PATH.
 
 ---
 
@@ -124,7 +123,7 @@ mod tests {
 - [ ] **Step 4: Run tests and confirm pass**
 
 ```
-/Users/satoru/.cargo/bin/cargo test --quiet ui
+cargo test --quiet ui
 ```
 
 Expected: three new tests pass; total test count is 26 (23 existing + 3 new).
@@ -132,8 +131,8 @@ Expected: three new tests pass; total test count is 26 (23 existing + 3 new).
 - [ ] **Step 5: Lint and commit**
 
 ```
-/Users/satoru/.cargo/bin/cargo fmt
-/Users/satoru/.cargo/bin/cargo clippy --all-targets -- -D warnings
+cargo fmt
+cargo clippy --all-targets -- -D warnings
 git add src/ui/mod.rs
 git commit -m "refactor(ui): extract match_session helper for testable filter logic"
 ```
@@ -239,7 +238,7 @@ fn body_scope_on_still_matches_title() {
 - [ ] **Step 5: Run tests**
 
 ```
-/Users/satoru/.cargo/bin/cargo test --quiet ui
+cargo test --quiet ui
 ```
 
 Expected: six ui tests pass (3 from Task 1 + 3 new); total test count is 29.
@@ -247,8 +246,8 @@ Expected: six ui tests pass (3 from Task 1 + 3 new); total test count is 29.
 - [ ] **Step 6: Lint and commit**
 
 ```
-/Users/satoru/.cargo/bin/cargo fmt
-/Users/satoru/.cargo/bin/cargo clippy --all-targets -- -D warnings
+cargo fmt
+cargo clippy --all-targets -- -D warnings
 git add src/ui/mod.rs
 git commit -m "feat(ui): extend FilterState with body_scope and body_cache"
 ```
@@ -322,9 +321,9 @@ list::render(
 - [ ] **Step 5: Verify build and tests**
 
 ```
-/Users/satoru/.cargo/bin/cargo fmt
-/Users/satoru/.cargo/bin/cargo clippy --all-targets -- -D warnings
-/Users/satoru/.cargo/bin/cargo test --quiet
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --quiet
 ```
 
 Expected: clean, all 29 tests pass.
@@ -415,9 +414,9 @@ match handle_key(key.code, &mut app) {
 - [ ] **Step 6: Verify**
 
 ```
-/Users/satoru/.cargo/bin/cargo fmt
-/Users/satoru/.cargo/bin/cargo clippy --all-targets -- -D warnings
-/Users/satoru/.cargo/bin/cargo test --quiet
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --quiet
 ```
 
 Expected: clean. All tests still pass.
@@ -476,9 +475,9 @@ Notes:
 - [ ] **Step 2: Build and test**
 
 ```
-/Users/satoru/.cargo/bin/cargo fmt
-/Users/satoru/.cargo/bin/cargo clippy --all-targets -- -D warnings
-/Users/satoru/.cargo/bin/cargo test --quiet
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --quiet
 ```
 
 Expected: clean. All 29 tests still pass.
@@ -486,7 +485,7 @@ Expected: clean. All 29 tests still pass.
 - [ ] **Step 3: Manual smoke test (if a TTY is available)**
 
 ```
-/Users/satoru/.cargo/bin/cargo run --release
+cargo run --release
 ```
 
 In the TUI:
@@ -519,7 +518,7 @@ A whole-feature sanity check before finishing.
 - [ ] **Step 1: Confirm all tests pass**
 
 ```
-/Users/satoru/.cargo/bin/cargo test
+cargo test
 ```
 
 Expected: 29 passed.
@@ -527,14 +526,14 @@ Expected: 29 passed.
 - [ ] **Step 2: Confirm lint and format are clean**
 
 ```
-/Users/satoru/.cargo/bin/cargo fmt --check
-/Users/satoru/.cargo/bin/cargo clippy --all-targets -- -D warnings
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
 ```
 
 - [ ] **Step 3: Confirm `--list` still works (regression check)**
 
 ```
-/Users/satoru/.cargo/bin/cargo run --quiet -- --list | head -5
+cargo run --quiet -- --list | head -5
 ```
 
 Expected: the same five-row preview the v1 implementation produced.
