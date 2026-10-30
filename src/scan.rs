@@ -8,37 +8,27 @@ pub fn projects_root() -> Option<PathBuf> {
     Some(dirs::home_dir()?.join(".claude").join("projects"))
 }
 
-/// Recursively list every `*.jsonl` file under `root` (exactly one level deep
-/// is sufficient in practice but we still walk recursively for safety).
+/// List `<root>/<project-dir>/*.jsonl`. Deeper files (e.g.
+/// `<session-id>/subagents/agent-*.jsonl`) are subagent transcripts, not
+/// sessions, so they are not visited.
 /// Missing roots return an empty vector — never an error.
 pub fn list_session_files(root: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
-    let Ok(entries) = fs::read_dir(root) else {
+    let Ok(projects) = fs::read_dir(root) else {
         return out;
     };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            visit_dir(&path, &mut out);
-        } else if is_jsonl(&path) {
-            out.push(path);
+    for project in projects.flatten() {
+        let Ok(entries) = fs::read_dir(project.path()) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() && is_jsonl(&path) {
+                out.push(path);
+            }
         }
     }
     out
-}
-
-fn visit_dir(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(entries) = fs::read_dir(dir) else {
-        return;
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            visit_dir(&path, out);
-        } else if is_jsonl(&path) {
-            out.push(path);
-        }
-    }
 }
 
 fn is_jsonl(p: &Path) -> bool {
@@ -75,5 +65,20 @@ mod tests {
         assert_eq!(found.len(), 2);
         assert!(found.iter().any(|p| p.ends_with("aaaa.jsonl")));
         assert!(found.iter().any(|p| p.ends_with("bbbb.jsonl")));
+    }
+
+    #[test]
+    fn skips_nested_subagent_transcripts() {
+        let tmp = tempdir().unwrap();
+        let root = tmp.path();
+        let proj = root.join("-proj-a");
+        let subagents = proj.join("aaaa").join("subagents");
+        fs::create_dir_all(&subagents).unwrap();
+        fs::write(proj.join("aaaa.jsonl"), "").unwrap();
+        fs::write(subagents.join("agent-x.jsonl"), "").unwrap();
+
+        let found = list_session_files(root);
+        assert_eq!(found.len(), 1);
+        assert!(found[0].ends_with("aaaa.jsonl"));
     }
 }
