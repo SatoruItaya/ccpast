@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 pub struct SessionMeta {
     pub session_id: String,
     pub path: PathBuf,
+    pub config_dir: PathBuf,
     pub cwd: Option<String>,
     pub cwd_exists: bool,
     pub last_activity: DateTime<Utc>,
@@ -26,6 +27,12 @@ pub fn extract_meta(path: &Path) -> Option<SessionMeta> {
 
     let file = fs::File::open(path).ok()?;
     let session_id = path.file_stem()?.to_string_lossy().to_string();
+    // <config_dir>/projects/<encoded-cwd>/<id>.jsonl
+    let config_dir = path
+        .ancestors()
+        .nth(3)
+        .map(Path::to_path_buf)
+        .unwrap_or_default();
 
     let mut cwd: Option<String> = None;
     let mut last_ts: Option<DateTime<Utc>> = None;
@@ -72,6 +79,7 @@ pub fn extract_meta(path: &Path) -> Option<SessionMeta> {
     Some(SessionMeta {
         session_id,
         path: path.to_path_buf(),
+        config_dir,
         cwd,
         cwd_exists,
         last_activity,
@@ -112,6 +120,18 @@ fn mtime_or_now(path: &Path) -> DateTime<Utc> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn config_dir_is_derived_from_session_path() {
+        let tmp = tempfile::tempdir().unwrap();
+        let cfg = tmp.path().join(".claude-work");
+        let proj = cfg.join("projects").join("-proj");
+        std::fs::create_dir_all(&proj).unwrap();
+        let file = proj.join("abcd.jsonl");
+        std::fs::write(&file, "").unwrap();
+
+        assert_eq!(extract_meta(&file).unwrap().config_dir, cfg);
+    }
 
     fn fixture(name: &str) -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))

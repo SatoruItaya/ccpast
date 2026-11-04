@@ -47,11 +47,11 @@ Do **not** add `nucleo-matcher` or any fuzzy matcher in v1. Keep the search laye
 ```
 src/
 ├── main.rs        # CLI flags (--help, --list, --version) and dispatch
-├── scan.rs        # Enumerate ~/.claude/projects/**/*.jsonl and extract lightweight metadata
+├── scan.rs        # Find config dirs, enumerate <config-dir>/projects/*/*.jsonl, and extract lightweight metadata
 ├── parser.rs      # Low-level: turn a JSONL line (serde_json::Value) into typed structs
 ├── session.rs     # SessionMeta / SessionFull and their construction
 ├── reader.rs      # Load one session's full body into a sequence of turns
-├── trash.rs       # Move to ~/.claude/.trash/ and append to index.jsonl
+├── trash.rs       # Move to <config-dir>/.trash/ and append to index.jsonl
 ├── resume.rs      # Spawn `claude --resume`
 ├── ui/
 │   ├── mod.rs     # App state, event loop, ratatui draw hub
@@ -65,7 +65,9 @@ Avoid premature abstraction. Before adding a new file, check whether it fits int
 
 ## Data source
 
-- Sessions live at `~/.claude/projects/<encoded-cwd>/<session-id>.jsonl` — one JSON object per line.
+- Sessions live at `<config-dir>/projects/<encoded-cwd>/<session-id>.jsonl` — one JSON object per line.
+- `<config-dir>` is `~/.claude`, any `~/.claude-*` with a `projects/` subdir, or `$CLAUDE_CONFIG_DIR` (users switch accounts per directory via direnv). All are scanned and merged. Resume sets `CLAUDE_CONFIG_DIR` to the session's config dir (and removes it for `~/.claude`, because setting it also relocates Claude Code's global config file). Trash goes to `<config-dir>/.trash/`.
+- Only files directly under `projects/<encoded-cwd>/` are sessions; `<session-id>/subagents/*.jsonl` are subagent transcripts and are skipped.
 - The directory name is an encoded form of the original path (`/` → `-`). **Do not try to decode it back** to the original path. Read `cwd` from inside the JSONL instead (first non-null `cwd` field encountered).
 - **Never read or modify `~/.claude/history.jsonl`.** It does not cover all sessions, so it is unsuitable as a list source; v1 also does not touch it on delete (note this in the README).
 
@@ -177,8 +179,8 @@ A child process cannot change the parent shell's cwd. We must set `current_dir` 
 
 ## Delete (trash)
 
-- `d` → `y/n` confirmation → move the JSONL to `~/.claude/.trash/<timestamp>-<session-id>.jsonl`. Never `rm`.
-- Append to `~/.claude/.trash/index.jsonl`:
+- `d` → `y/n` confirmation → move the JSONL to `<config-dir>/.trash/<timestamp>-<session-id>.jsonl`. Never `rm`.
+- Append to `<config-dir>/.trash/index.jsonl`:
   ```
   {"trashed_path":"...","original_path":"...","session_id":"...","deleted_at":"<ISO8601>"}
   ```
@@ -193,10 +195,10 @@ A child process cannot change the parent shell's cwd. We must set `current_dir` 
 
 ## Acceptance criteria
 
-- Every session under `~/.claude/projects/` shows up in one flat list, sorted by most recent activity.
+- Every session under every `<config-dir>/projects/` shows up in one flat list, sorted by most recent activity.
 - Each row shows date, `basename(cwd)`, title, and the existence mark (✓/✗); full cwd is visible when a row is focused.
 - `↑/↓ + Enter` opens the Reader; `r` actually resumes the session.
-- `d` moves the file to `~/.claude/.trash/`; manual restore from there works.
+- `d` moves the file to `<config-dir>/.trash/`; manual restore from there works.
 - `/` filters incrementally.
 - Zero sessions, broken lines, or empty files never crash the tool.
 - Runs as a single binary with no `fzf` / Python on PATH.

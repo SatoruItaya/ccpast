@@ -184,15 +184,7 @@ fn handle_key(code: KeyCode, app: &mut App) -> Action {
                             return Action::None;
                         }
                         let meta = app.sessions[real_idx].clone();
-                        let trash_root = match crate::scan::projects_root()
-                            .and_then(|r| r.parent().map(|p| p.join(".trash")))
-                        {
-                            Some(p) => p,
-                            None => {
-                                app.status = Some("cannot determine ~/.claude/.trash".into());
-                                return Action::None;
-                            }
-                        };
+                        let trash_root = meta.config_dir.join(".trash");
                         match crate::trash::move_to_trash(&trash_root, &meta.path, &meta.session_id)
                         {
                             Ok(_) => {
@@ -371,7 +363,12 @@ fn do_resume(
     let _ = execute!(terminal.backend_mut(), LeaveAlternateScreen);
     let _ = terminal.show_cursor();
 
-    let result = crate::resume::spawn(std::path::Path::new(&cwd), &m.session_id, fork);
+    let result = crate::resume::spawn(
+        std::path::Path::new(&cwd),
+        &m.config_dir,
+        &m.session_id,
+        fork,
+    );
 
     if result.is_ok() {
         std::process::exit(0);
@@ -417,6 +414,7 @@ mod tests {
         SessionMeta {
             session_id: "id".into(),
             path: PathBuf::from(path),
+            config_dir: PathBuf::from("/cfg"),
             cwd: cwd.map(String::from),
             cwd_exists: true,
             last_activity: chrono::Utc::now(),

@@ -23,12 +23,24 @@ impl std::fmt::Display for ResumeError {
 /// Spawn `claude --resume <id>` with the child's `current_dir` set to `cwd`.
 /// stdio is inherited so the child takes over the terminal. Returns when the
 /// child exits.
-pub fn spawn(cwd: &Path, session_id: &str, fork: bool) -> Result<(), ResumeError> {
+pub fn spawn(
+    cwd: &Path,
+    config_dir: &Path,
+    session_id: &str,
+    fork: bool,
+) -> Result<(), ResumeError> {
     if !cwd.is_dir() {
         return Err(ResumeError::CwdMissing);
     }
     let mut cmd = Command::new("claude");
     cmd.current_dir(cwd).arg("--resume").arg(session_id);
+    // Setting CLAUDE_CONFIG_DIR, even to ~/.claude, also moves Claude Code's
+    // global config file, so only set it for non-default dirs.
+    if crate::scan::default_config_dir().as_deref() == Some(config_dir) {
+        cmd.env_remove("CLAUDE_CONFIG_DIR");
+    } else {
+        cmd.env("CLAUDE_CONFIG_DIR", config_dir);
+    }
     if fork {
         cmd.arg("--fork-session");
     }

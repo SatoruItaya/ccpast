@@ -8,7 +8,8 @@
 
 - **横断フラット一覧が主役**。プロジェクトでまず絞る必要なし。
 - **単一バイナリ・外部依存なし**。`fzf` も Python も不要。外部プロセス起動は `claude` 本体だけ。
-- **ゴミ箱方式の削除**。`~/.claude/.trash/` に移動し、`index.jsonl` に元パスを記録。`mv` で復元できる。
+- **ゴミ箱方式の削除**。`<config-dir>/.trash/` に移動し、`index.jsonl` に元パスを記録。`mv` で復元できる。
+- **複数の Claude Code アカウントに対応**。すべての設定ディレクトリのセッションを同じ一覧にまとめて表示（後述）。
 
 ## インストール
 
@@ -57,9 +58,19 @@ ccpast --help
 | `r`                 | 再開                 |
 | `q` / `Esc`         | 一覧に戻る            |
 
+## 設定ディレクトリ
+
+`ccpast` は見つかったすべての Claude Code 設定ディレクトリからセッションを読み込みます:
+
+- `~/.claude`
+- `projects/` サブディレクトリを持つ `~/.claude-*` ディレクトリすべて（例: direnv でディレクトリごとに `CLAUDE_CONFIG_DIR=$HOME/.claude-work` を設定している場合の `~/.claude-work`）
+- `$CLAUDE_CONFIG_DIR`（設定されている場合）
+
+再開時は、そのセッションがあった設定ディレクトリを `CLAUDE_CONFIG_DIR` に指定して `claude` を起動します（`~/.claude` の場合は未設定にします）。そのため、どのシェルから `ccpast` を起動しても再開できます。
+
 ## 削除と復元
 
-`d` → `y` で確認すると、`~/.claude/projects/<encoded-cwd>/<id>.jsonl` を `~/.claude/.trash/<timestamp>-<id>.jsonl` に**移動**し、`~/.claude/.trash/index.jsonl` に1行追記します:
+`d` → `y` で確認すると、`<config-dir>/projects/<encoded-cwd>/<id>.jsonl` を `<config-dir>/.trash/<timestamp>-<id>.jsonl` に**移動**し、`<config-dir>/.trash/index.jsonl` に1行追記します。`<config-dir>` はそのセッションがあった設定ディレクトリです（通常は `~/.claude`）:
 
 ```json
 {"trashed_path":"...","original_path":"...","session_id":"...","deleted_at":"..."}
@@ -68,10 +79,10 @@ ccpast --help
 復元したいときは `index.jsonl` で `original_path` を確認し、`mv` で戻してください:
 
 ```bash
-mv ~/.claude/.trash/<timestamp>-<id>.jsonl <original_path>
+mv <config-dir>/.trash/<timestamp>-<id>.jsonl <original_path>
 ```
 
-`ccpast` は `~/.claude/history.jsonl` を**触りません**。削除したセッションのプロンプト履歴の痕跡が残ることがあります。
+`ccpast` は `<config-dir>/history.jsonl` を**触りません**。削除したセッションのプロンプト履歴の痕跡が残ることがあります。
 
 ## クレジット
 
