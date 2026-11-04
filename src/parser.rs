@@ -31,7 +31,9 @@ pub enum ParsedRecord {
         timestamp: Option<DateTime<Utc>>,
     },
     Summary,
-    Other,
+    Other {
+        cwd: Option<String>,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -44,11 +46,12 @@ pub fn parse_line(line: &str) -> Option<ParsedRecord> {
     let v: serde_json::Value = serde_json::from_str(line).ok()?;
     let ty = v.get("type")?.as_str()?;
 
+    let cwd = v.get("cwd").and_then(|c| c.as_str()).map(|s| s.to_string());
     let kind = match ty {
         "user" => RecordKind::User,
         "assistant" => RecordKind::Assistant,
         "summary" => return Some(ParsedRecord::Summary),
-        _ => return Some(ParsedRecord::Other),
+        _ => return Some(ParsedRecord::Other { cwd }),
     };
 
     let role = v
@@ -72,7 +75,6 @@ pub fn parse_line(line: &str) -> Option<ParsedRecord> {
         _ => MessageContent::None,
     };
 
-    let cwd = v.get("cwd").and_then(|c| c.as_str()).map(|s| s.to_string());
     let timestamp = v
         .get("timestamp")
         .and_then(|t| t.as_str())
@@ -204,7 +206,10 @@ mod tests {
     #[test]
     fn unknown_type_returns_other() {
         let line = r#"{"type":"attachment","cwd":"/p"}"#;
-        assert!(matches!(parse(line), ParsedRecord::Other));
+        match parse(line) {
+            ParsedRecord::Other { cwd } => assert_eq!(cwd.as_deref(), Some("/p")),
+            other => panic!("expected Other, got {other:?}"),
+        }
     }
 
     #[test]

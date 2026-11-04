@@ -6,7 +6,7 @@
 
 ## Highlights
 
-- **Flat cross-cutting list as the primary view.** No project drill-down required.
+- **Flat cross-cutting list as the primary view.** No project drill-down required. Sessions with no user/assistant messages (opened and closed without any exchange) are hidden.
 - **Single binary, no external dependencies.** No `fzf`, no Python. The only external process invoked is `claude` itself.
 - **Trash-based deletion.** Sessions move to `<config-dir>/.trash/` with an `index.jsonl` audit line; restore manually with `mv`.
 - **Multiple Claude Code accounts.** Sessions from every config directory are merged into the same list (see below).

@@ -114,11 +114,11 @@ Lightweight metadata, built once at startup for every session:
 |---|---|
 | `session_id` | filename stem |
 | `path` | absolute path to the JSONL file |
-| `cwd` | first non-null `cwd` in the file |
+| `cwd` | first non-null `cwd` in the file, from any record type (sessions without messages only carry it on `system` etc.) |
 | `cwd_exists` | filesystem check on `cwd` |
 | `last_activity` | max `timestamp` in the file; fall back to file mtime |
 | `title` | first human user utterance (see below); `(no title)` if none |
-| `message_count` | number of `user`/`assistant` rows |
+| `message_count` | number of `user`/`assistant` rows; sessions with `0` are hidden from the list |
 
 Title extraction rules:
 - Scan `type:"user"` rows. If `message.content` is a string, use it. If it is an array, use the first `type:"text"` block's `text`.

@@ -43,19 +43,21 @@ pub fn extract_meta(path: &Path) -> Option<SessionMeta> {
         let Some(record) = parse_line(&line) else {
             continue;
         };
+        if cwd.is_none() {
+            if let ParsedRecord::UserOrAssistant { cwd: Some(c), .. }
+            | ParsedRecord::Other { cwd: Some(c) } = &record
+            {
+                cwd = Some(c.clone());
+            }
+        }
         if let ParsedRecord::UserOrAssistant {
             kind,
             message,
-            cwd: c,
             timestamp,
+            ..
         } = record
         {
             message_count += 1;
-            if cwd.is_none() {
-                if let Some(c) = c {
-                    cwd = Some(c);
-                }
-            }
             if let Some(ts) = timestamp {
                 last_ts = Some(match last_ts {
                     Some(prev) if prev > ts => prev,
@@ -131,6 +133,21 @@ mod tests {
         std::fs::write(&file, "").unwrap();
 
         assert_eq!(extract_meta(&file).unwrap().config_dir, cfg);
+    }
+
+    #[test]
+    fn cwd_is_read_from_non_message_records() {
+        let tmp = tempfile::tempdir().unwrap();
+        let file = tmp.path().join("abcd.jsonl");
+        std::fs::write(
+            &file,
+            "{\"type\":\"mode\"}\n{\"type\":\"system\",\"cwd\":\"/tmp/proj\"}\n",
+        )
+        .unwrap();
+
+        let m = extract_meta(&file).unwrap();
+        assert_eq!(m.cwd.as_deref(), Some("/tmp/proj"));
+        assert_eq!(m.message_count, 0);
     }
 
     fn fixture(name: &str) -> PathBuf {
