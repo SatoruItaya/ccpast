@@ -65,6 +65,9 @@ fn load_sessions() -> Option<Vec<session::SessionMeta>> {
         .iter()
         .flat_map(|d| scan::list_session_files(&d.join("projects")))
         .filter_map(|p| session::extract_meta(&p))
+        // Sessions that were opened and closed without any exchange have
+        // nothing to read or resume.
+        .filter(|m| m.message_count > 0)
         .collect();
     metas.sort_by(|a, b| b.last_activity.cmp(&a.last_activity));
     Some(metas)
