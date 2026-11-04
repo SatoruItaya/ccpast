@@ -8,7 +8,8 @@
 
 - **Flat cross-cutting list as the primary view.** No project drill-down required.
 - **Single binary, no external dependencies.** No `fzf`, no Python. The only external process invoked is `claude` itself.
-- **Trash-based deletion.** Sessions move to `~/.claude/.trash/` with an `index.jsonl` audit line; restore manually with `mv`.
+- **Trash-based deletion.** Sessions move to `<config-dir>/.trash/` with an `index.jsonl` audit line; restore manually with `mv`.
+- **Multiple Claude Code accounts.** Sessions from every config directory are merged into the same list (see below).
 
 ## Install
 
@@ -57,9 +58,19 @@ ccpast --help
 | `r`                  | Resume            |
 | `q` / `Esc`          | Back to list      |
 
+## Config directories
+
+`ccpast` reads sessions from every Claude Code config directory it finds:
+
+- `~/.claude`
+- every `~/.claude-*` directory that contains a `projects/` subdirectory (e.g. `~/.claude-work`, if you set `CLAUDE_CONFIG_DIR=$HOME/.claude-work` per directory with direnv)
+- `$CLAUDE_CONFIG_DIR`, if set
+
+Resuming a session runs `claude` with `CLAUDE_CONFIG_DIR` pointing at the directory the session came from (unset for `~/.claude`), so it works regardless of the shell you launched `ccpast` from.
+
 ## Deletion and recovery
 
-Pressing `d` and confirming moves the JSONL file from `~/.claude/projects/<encoded-cwd>/<id>.jsonl` to `~/.claude/.trash/<timestamp>-<id>.jsonl` and appends a line to `~/.claude/.trash/index.jsonl`:
+Pressing `d` and confirming moves the JSONL file from `<config-dir>/projects/<encoded-cwd>/<id>.jsonl` to `<config-dir>/.trash/<timestamp>-<id>.jsonl` and appends a line to `<config-dir>/.trash/index.jsonl`, where `<config-dir>` is the directory the session came from (usually `~/.claude`):
 
 ```json
 {"trashed_path":"...","original_path":"...","session_id":"...","deleted_at":"..."}
@@ -68,10 +79,10 @@ Pressing `d` and confirming moves the JSONL file from `~/.claude/projects/<encod
 To restore a session, look up its `original_path` in `index.jsonl` and move it back:
 
 ```bash
-mv ~/.claude/.trash/<timestamp>-<id>.jsonl <original_path>
+mv <config-dir>/.trash/<timestamp>-<id>.jsonl <original_path>
 ```
 
-`ccpast` does **not** touch `~/.claude/history.jsonl`. Some prompt-history residue from the deleted session may remain there.
+`ccpast` does **not** touch `<config-dir>/history.jsonl`. Some prompt-history residue from the deleted session may remain there.
 
 ## Credit
 

@@ -29,15 +29,10 @@ fn main() -> ExitCode {
         return run_list();
     }
 
-    let Some(root) = scan::projects_root() else {
+    let Some(metas) = load_sessions() else {
         eprintln!("ccpast: cannot determine $HOME");
         return ExitCode::from(2);
     };
-    let mut metas: Vec<_> = scan::list_session_files(&root)
-        .iter()
-        .filter_map(|p| session::extract_meta(p))
-        .collect();
-    metas.sort_by(|a, b| b.last_activity.cmp(&a.last_activity));
 
     if let Err(err) = ui::run(metas) {
         eprintln!("ccpast: {err:#}");
@@ -61,17 +56,25 @@ fn print_help() {
     );
 }
 
+fn load_sessions() -> Option<Vec<session::SessionMeta>> {
+    let dirs = scan::config_dirs();
+    if dirs.is_empty() {
+        return None;
+    }
+    let mut metas: Vec<_> = dirs
+        .iter()
+        .flat_map(|d| scan::list_session_files(&d.join("projects")))
+        .filter_map(|p| session::extract_meta(&p))
+        .collect();
+    metas.sort_by(|a, b| b.last_activity.cmp(&a.last_activity));
+    Some(metas)
+}
+
 fn run_list() -> ExitCode {
-    let Some(root) = scan::projects_root() else {
+    let Some(metas) = load_sessions() else {
         eprintln!("ccpast: cannot determine $HOME");
         return ExitCode::from(2);
     };
-
-    let mut metas: Vec<_> = scan::list_session_files(&root)
-        .iter()
-        .filter_map(|p| session::extract_meta(p))
-        .collect();
-    metas.sort_by(|a, b| b.last_activity.cmp(&a.last_activity));
 
     let stdout = io::stdout();
     let mut out = stdout.lock();
