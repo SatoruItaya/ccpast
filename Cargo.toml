@@ -1,6 +1,6 @@
 [package]
 name = "ccpast"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "Flat cross-cutting browser for Claude Code session history"
 license = "MIT"
